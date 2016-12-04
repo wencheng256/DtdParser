@@ -24,7 +24,7 @@ request.setAttribute("path", basePath);
 			<div class="container">			
 				<header>
 					<h1 style="font-family:微软雅黑;">DTD结构图生成器
-						<span style="line-height:40px;">www.wencheng.win/dtd</span>
+						<span style="line-height:40px;">www.mario256.cn</span>
 					</h1>	
 					<br>
 					<div>
@@ -43,87 +43,70 @@ request.setAttribute("path", basePath);
 <!-- 为ECharts准备一个具备大小（宽高）的Dom -->
     <div id="main" style="height:800px"></div>
     <!-- ECharts单文件引入 -->
-    <script src="${path}resources/js/echarts.js"></script>
+    <script src="${path}resources/js/echarts-all.js"></script>
+
     <script type="text/javascript">
         // 路径配置
-        require.config({
-            paths: {
-                echarts: '${path}/js'
-            }
-        });
+		var myChart = echarts.init(document.getElementById('main'));
+		var option = {
+			title : {
+				text: 'DTD展示'
+			},
+			toolbox: {
+				show : true,
+				feature : {
+					mark : {show: true},
+					dataView : {show: false, readOnly: true},
+					restore : {show: true},
+					saveAsImage : {show: true}
+				}
+			},
+			series : [
+				{
+					name:'树图',
+					type:'tree',
+					orient: 'horizontal',  // vertical horizontal
+					rootLocation: {x: 100,y: 230}, // 根节点位置  {x: 100, y: 'center'}
+					nodePadding: ${height},
+					layerPadding: ${width},
+					hoverable: true,
+					roam: true,
+					symbolSize: 10,
+					itemStyle: {
+						normal: {
+							color: '#4883b4',
+							label: {
+								show: true,
+								position: 'right',
+								formatter: "{b}",
+								textStyle: {
+									color: '#000',
+									fontSize: 10
+								}
+							},
+							lineStyle: {
+								color: '#ccc',
+								type: 'broken' // 'curve'|'broken'|'solid'|'dotted'|'dashed'
 
-        // 使用
-        require(
-            [
-                'echarts',
-                'chart/tree' // 使用柱状图就加载bar模块，按需加载
-            ],
-            function (ec) {
-                // 基于准备好的dom，初始化echarts图表
-                var myChart = ec.init(document.getElementById('main')); 
-                
-                var option = {
-                	    title : {
-                	        text: 'DTD展示'
-                	    },
-                	    toolbox: {
-                	        show : true,
-                	        feature : {
-                	            mark : {show: true},
-                	            dataView : {show: false, readOnly: true},
-                	            restore : {show: true},
-                	            saveAsImage : {show: true}
-                	        }
-                	    },
-                	    series : [
-                	        {
-                	            name:'树图',
-                	            type:'tree',
-                	            orient: 'horizontal',  // vertical horizontal
-                	            rootLocation: {x: 100,y: 230}, // 根节点位置  {x: 100, y: 'center'}
-                	            nodePadding: ${height},
-                	            layerPadding: ${width},
-                	            hoverable: true,
-                	            roam: true,
-                	            symbolSize: 10,
-                	            itemStyle: {
-                	                normal: {
-                	                    color: '#4883b4',
-                	                    label: {
-                	                        show: true,
-                	                        position: 'right',
-                	                        formatter: "{b}",
-                	                        textStyle: {
-                	                            color: '#000',
-                	                            fontSize: 10
-                	                        }
-                	                    },
-                	                    lineStyle: {
-                	                        color: '#ccc',
-                	                        type: 'broken' // 'curve'|'broken'|'solid'|'dotted'|'dashed'
+							}
+						},
+						emphasis: {
+							color: '#4883b4',
+							label: {
+								show: true
+							},
+							borderWidth: 0
+						}
+					},
 
-                	                    }
-                	                },
-                	                emphasis: {
-                	                    color: '#4883b4',
-                	                    label: {
-                	                        show: true
-                	                    },
-                	                    borderWidth: 0
-                	                }
-                	            },
-                	            
-                	            data: [
-									${json}
-                	            ]
-                	        }
-                	    ]
-                	};
-        
-                // 为echarts对象加载数据 
-                myChart.setOption(option); 
-            }
-        );
+					data: [
+						${json}
+					]
+				}
+			]
+		};
+		myChart.setOption(option);
+
         function go(){
         	var lo = window.location.origin+window.location.pathname+window.location.search.split("&")[0];
         	var width = document.getElementById("width");
