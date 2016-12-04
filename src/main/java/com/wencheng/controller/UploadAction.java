@@ -7,6 +7,7 @@ import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang.time.DateFormatUtils;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
@@ -57,12 +58,12 @@ public class UploadAction extends BaseServlet {
             }
 
             InputStream in = item.getInputStream();
-            File f = new File(getServletContext().getRealPath("/file/"+new SimpleDateFormat("YYYYMMdd").format(new Date())+"/"));
+            File f = new File(getServletContext().getRealPath("/file/"+ DateFormatUtils.format(new Date(), "yyyyMMdd")+"/"));
             if(!f.exists()){
                 f.mkdir();
             }
 
-			String targetName = UUID.randomUUID() + FilenameUtils.getExtension(item.getName());
+			String targetName = UUID.randomUUID().toString().replace("-", "") + "." + FilenameUtils.getExtension(item.getName());
 			File target = new File(f.getAbsolutePath() + "/" + targetName);
 			FileUtils.copyToFile(in, target);
             in.close();

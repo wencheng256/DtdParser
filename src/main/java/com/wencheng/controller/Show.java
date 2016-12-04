@@ -31,7 +31,7 @@ public class Show extends BaseServlet {
 		request.setAttribute("width", width);
 		request.setAttribute("height", height);
 
-		String dirName = DateFormatUtils.format(new Date(), "YYYYMMdd");
+		String dirName = DateFormatUtils.format(new Date(), "yyyyMMdd");
 
 		FileParseDtd f = new FileParseDtd(getServletContext().getRealPath("/file/"+ dirName +"/"+file));
 		JSONObject json = f.getBigJson("first_item_256", "起始");

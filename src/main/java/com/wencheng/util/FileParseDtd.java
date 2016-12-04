@@ -6,8 +6,10 @@ import com.wencheng.bean.ChildNode;
 import com.wencheng.bean.Element;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
+import org.apache.commons.io.FileUtils;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -25,10 +27,16 @@ public class FileParseDtd{
 		attrmap = parseAttr();
 	}
 
-	
+	/**
+	 * 统一入口
+	 * @param father
+	 * @param num
+     * @return
+     */
 	public JSONObject getBigJson(String father,String num){
 		JSONObject jo = new JSONObject();
 		JSONArray ja = new JSONArray();
+
 		jo.put("name", "xml");
 		ja.add(getJson(father,num));
 		Iterator<Element> it = map.values().iterator();
@@ -44,22 +52,25 @@ public class FileParseDtd{
 	}
 	
 	public JSONObject getJson(String father,String num){
+
 		father = father.replace("+","");
 		father = father.replace("*","");
 		father = father.replace("?","");
 		father = father.trim();
+
 		if(father.equals("first_item_256")){
 			father = first;
 		}
+
 		if(father.startsWith("#")){
 			JSONObject jo = new JSONObject();
 			jo.put("name",father);
 			return jo;
 		}
-		//System.out.println(father);
+
 		Element ele = map.get(father);
 		if(ele == null){
-			//System.out.println(father);
+
 			JSONObject jo = new JSONObject();
 			jo.put("name", "【"+father+"】");
 			return jo ;
@@ -111,137 +122,165 @@ public class FileParseDtd{
 		}
 		return jo;
 	}
-	
+
+	/**
+	 * 将Dtd转化成Map
+	 * @return
+     */
 	private Map<String,Element> parseElement() {
 		Map<String,Element> list = new HashMap<String,Element>();
-		String content = "";
+		String rawContent = "";
+
 		try {
-			content = createContent();
-		} catch (FileNotFoundException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (UnsupportedEncodingException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
+			rawContent = createContent();
+		}catch (Exception e) {
+			e.printStackTrace();
 		}
-	
-		Pattern rep = Pattern.compile("\\(([^,\\(\\)]+?)\\)([\\*\\+\\?])");
-		Matcher mar = rep.matcher(content.replace("\n", " ").replace("\0", ""));
-		StringBuffer con = new StringBuffer();
-		while(mar.find()){
-			String str = mar.group(1);
-			String[] split = str.split("\\||,");
-			StringBuilder sb = new StringBuilder();
-			sb.append("(");
-			for(int i = 0; i<split.length; i++){
-				sb.append(split[i]+mar.group(2));
-				if(i+1<split.length){
-					sb.append(",");
-				}
+
+		StringBuffer content = preProcessElement(rawContent);
+
+		Pattern regexpElemet = Pattern.compile("<!ELEMENT\\s*([\\w-]+)\\s*\\(([^\\(\\)]*)[\\+\\?\\*]?\\).*?>",Pattern.MULTILINE);
+		Matcher ma = regexpElemet.matcher(content.toString());
+
+		boolean first = true;
+		while(ma.find()){
+
+			if(first){
+				this.first = ma.group(1);
+				first = false;
 			}
-			sb.append(")");
-			mar.appendReplacement(con, sb.toString());
+			Element e = toElement(ma);
+			list.put(e.getName(),e);
 		}
-		mar.appendTail(con);
-		//System.out.println(con.toString());
-		
+
+		Pattern regexpElement2 = Pattern.compile("<!ELEMENT\\s*([\\w-]+)\\s*(:?EMPTY|SYSTEM|ANY)(:?[\"\\w\\s]*)>",Pattern.MULTILINE);
+		Matcher ma2 = regexpElement2.matcher(rawContent);
+		while(ma2.find()){
+			toElement2(list, ma2);
+		}
+
+		return list;
+	}
+
+	private void toElement2(Map<String, Element> list, Matcher ma2) {
+		Element e = toElement2(ma2);
+		list.put(e.getName(), e);
+	}
+
+
+	/**
+	 * 将匹配结果转化成Element
+	 * @param ma
+	 * @return
+     */
+	private Element toElement(Matcher ma) {
+		Element e = toElement2(ma);
+		String[] songsString = ma.group(2).replace(")","").replace("(", "").split("\\||,");
+
+		ChildNode[] sons = new ChildNode[songsString.length];
+		for(int i = 0; i<songsString.length ;i++){
+            songsString[i] = songsString[i].trim();
+            String name = "";
+            String num = "";
+
+            ChildNode cn = new ChildNode();
+            if(songsString[i].endsWith("+")||songsString[i].endsWith("*")||songsString[i].endsWith("?")){
+                name = songsString[i].substring(0,songsString[i].length()-1);
+                num = songsString[i].substring(songsString[i].length()-1);
+            }else{
+                name = songsString[i];
+                num = "唯一";
+            }
+            cn.setName(name.trim());
+            cn.setNum(num.trim());
+            sons[i] = cn;
+        }
+		e.setSons(sons);
+		return e;
+	}
+
+	private Element toElement2(Matcher ma2) {
+		Element e = new Element();
+		e.setName(ma2.group(1));
+		return e;
+	}
+
+	private StringBuffer preProcessElement(String rawContent) {
+
+		StringBuffer noBlankContent = removeBlankInElement(rawContent);
+
 		Pattern rep2 = Pattern.compile("\\(([^\\<\\>]*)\\)");
-		Matcher mar2 = rep2.matcher(con.toString());
+		Matcher mar2 = rep2.matcher(noBlankContent.toString());
 		StringBuffer con2 = new StringBuffer();
 		while(mar2.find()){
 			mar2.appendReplacement(con2, "("+mar2.group().replace("(", "").replace(")","")+")");
 		}
 		mar2.appendTail(con2);
-		//System.out.println(con2.toString());
-		
-		
-		
-		
-		Pattern p = Pattern.compile("<!ELEMENT\\s*([\\w-]+)\\s*\\(([^\\(\\)]*)[\\+\\?\\*]?\\).*?>",Pattern.MULTILINE);
-		Matcher ma = p.matcher(con2.toString());
-		//System.out.println(content.replace("\n", " ").replace("\0", ""));
-		boolean first = true;
-		while(ma.find()){
-			if(first){
-				this.first = ma.group(1);
-				first = false;
-			}
-			//System.out.println(ma.group(1));
-			Element e = new Element();
-			e.setName(ma.group(1));
-			//System.out.println(ma.group(2));
-			String[] sons = ma.group(2).replace(")","").replace("(", "").split("\\||,");
-			ChildNode[] so = new ChildNode[sons.length];
-			for(int i = 0; i<sons.length ;i++){
-				sons[i] = sons[i].trim();
-				//System.out.println(sons[i]);
-				String name = "";
-				String num = "";
-				ChildNode cn = new ChildNode();
-				if(sons[i].endsWith("+")||sons[i].endsWith("*")||sons[i].endsWith("?")){
-					name = sons[i].substring(0,sons[i].length()-1);
-					num = sons[i].substring(sons[i].length()-1);
-				}else{
-					name = sons[i];
-					num = "唯一";
-				}
-				cn.setName(name.trim());
-				cn.setNum(num.trim());
-				so[i] = cn;
-			}
-			e.setSons(so);
-			//System.out.println(e);
-			list.put(e.getName(),e);
-		}
-		Pattern p2 = Pattern.compile("<!ELEMENT\\s*([\\w-]+)\\s*(:?EMPTY|SYSTEM|ANY)(:?[\"\\w\\s]*)>",Pattern.MULTILINE);
-		Matcher ma2 = p2.matcher(content);
-		while(ma2.find()){
-			Element e = new Element();
-			e.setName(ma2.group(1));
-			list.put(e.getName(), e);
-		}
-		
-		
-		return list;
+		return con2;
 	}
-	
+
+	private StringBuffer removeBlankInElement(String rawContent) {
+		Pattern rep = Pattern.compile("\\(([^,\\(\\)]+?)\\)([\\*\\+\\?])");
+		Matcher mresult = rep.matcher(rawContent.replace("\n", " ").replace("\0", ""));
+
+		StringBuffer con = new StringBuffer();
+		while(mresult.find()){
+
+			String str = mresult.group(1);
+			String[] split = str.split("\\||,");
+
+			StringBuilder sb = new StringBuilder();
+			sb.append("(");
+			for(int i = 0; i<split.length; i++){
+				sb.append(split[i]+mresult.group(2));
+				if(i+1<split.length){
+					sb.append(",");
+				}
+			}
+			sb.append(")");
+
+			mresult.appendReplacement(con, sb.toString());
+		}
+		mresult.appendTail(con);
+		return con;
+	}
+
+	/**
+	 * 将属性处理成Map
+	 * @return
+     */
 	private Map<String,AttrList> parseAttr(){
-		HashMap<String, AttrList> attrmap = new HashMap<String,AttrList>();
+		HashMap<String, AttrList> attrmap = new HashMap<>();
 		String content = "";
+
 		try {
 			 content = createContent().trim().replace("\n", " ");
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		Pattern pat = Pattern.compile("<!ATTLIST\\s*([\\w]*)\\s*(.*?)>");
-		Pattern patattr = Pattern.compile("([\\w]*)\\s*(?:CDATA|\\(.*?\\))\\s*#([\\w]*\\s*?)");
-		Matcher mat = pat.matcher(content);
+
+		Pattern regexpAttList= Pattern.compile("<!ATTLIST\\s*([\\w]*)\\s*(.*?)>");
+		Pattern regexpAttElement = Pattern.compile("([\\w]*)\\s*(?:CDATA|\\(.*?\\))\\s*#([\\w]*\\s*?)");
+
+		Matcher mat = regexpAttList.matcher(content);
 		while(mat.find()){
 			AttrList al = null;
 			List<Attr> ll = null;
-			if(attrmap.get(mat.group(1))!=null){
-				al = attrmap.get(mat.group(1));
+
+			String eName = mat.group(1);
+			if(attrmap.get(eName)!=null){
+				al = attrmap.get(eName);
 				ll = al.getList();
 			}else{
 				al = new AttrList();
-				al.setParent(mat.group(1));
+				al.setParent(eName);
 				ll = new LinkedList<Attr>();
 				al.setList(ll);
 			}
+
 			String attrcontent = mat.group(2);
-			Matcher matattr = patattr.matcher(attrcontent);
+			Matcher matattr = regexpAttElement.matcher(attrcontent);
 			while(matattr.find()){
-				//System.out.println(matattr.group());
 				Attr attr = new Attr();
 				attr.setName(matattr.group(1));
 				if(matattr.group(2).trim().equals("REQUIRED")){
@@ -256,22 +295,20 @@ public class FileParseDtd{
 		return attrmap;
 	}
 
-	public  String createContent() throws FileNotFoundException,
-			IOException, UnsupportedEncodingException {
-		File f = new File(path);
-		if(!f.exists()){
+	/**
+	 * 读取文件
+	 * @return
+	 * @throws IOException
+     */
+	private  String createContent() throws IOException{
+
+		File file = new File(path);
+
+		if(!file.exists()){
 			return "";
 		}
-		InputStream in = new FileInputStream(f);
-		StringBuilder sb = new StringBuilder();
-		byte[] b = new byte[1024];
-		int len = 0;
-		while((len = in.read(b))>0){
-			sb.append(new String(b,0,len));
-		}
-		
-		in.close();
-		return sb.toString();
+
+		return FileUtils.readFileToString(file, "utf-8");
 	}
 
 }

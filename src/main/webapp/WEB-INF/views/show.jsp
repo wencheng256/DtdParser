@@ -14,16 +14,10 @@ request.setAttribute("path", basePath);
 		<title>Dtd结构图</title>
 
 		<!-- Bootstrap -->
-		<link href="${path}css/bootstrap.css" rel="stylesheet">
-		<link href="${path}css/font-awesome.css" rel="stylesheet">
-		<link href="${path}css/style.css" rel="stylesheet">
+		<link href="${path}/resources/css/bootstrap.css" rel="stylesheet">
+		<link href="${path}/resources/css/font-awesome.css" rel="stylesheet">
+		<link href="${path}/resources/css/style.css" rel="stylesheet">
 
-		<!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
-		<!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
-		<!--[if lt IE 9]>
-		  <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
-		  <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-		<![endif]-->
 	</head>
 	<body>
 		<div class="home">
@@ -49,20 +43,20 @@ request.setAttribute("path", basePath);
 <!-- 为ECharts准备一个具备大小（宽高）的Dom -->
     <div id="main" style="height:800px"></div>
     <!-- ECharts单文件引入 -->
-    <script src="${path }js/echarts.js"></script>
+    <script src="${path}resources/js/echarts.js"></script>
     <script type="text/javascript">
         // 路径配置
         require.config({
             paths: {
-                echarts: '${path }js'
+                echarts: '${path}/js'
             }
         });
-        
+
         // 使用
         require(
             [
                 'echarts',
-                'echarts/chart/tree' // 使用柱状图就加载bar模块，按需加载
+                'chart/tree' // 使用柱状图就加载bar模块，按需加载
             ],
             function (ec) {
                 // 基于准备好的dom，初始化echarts图表
